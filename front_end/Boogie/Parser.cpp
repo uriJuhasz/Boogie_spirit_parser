@@ -6,6 +6,9 @@
 #include <boost/spirit/home/x3.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 
+#include <iostream>
+using namespace std;
+
 namespace front_end{
     namespace Boogie {
 		  namespace spirit = boost::spirit;
@@ -14,15 +17,26 @@ namespace front_end{
 
 		  using x3::uint_;
 		  using x3::char_;
+		  using x3::eol;
+		  using x3::lexeme;
 
 		  namespace grammar{
+				using namespace x3;
+				x3::rule<class skip_to_semicolon> const skip_to_semicolon("WIP");
+				x3::rule<class semicolon> const semicolon(";");
+
 				x3::rule<class program> const program("program");
 				x3::rule<class declaration> const declaration("declaration");
 				x3::rule<class type_declaration> const type_declaration("type declaration");
+
+
+				x3::rule<class skip_parser> const skip_parser("skip");
+				x3::rule<class line_comment> const line_comment("line comment");
 				x3::rule<class const_declaration> const const_declaration("constant declaration");
 				x3::rule<class var_declaration> const var_declaration("variable declaration");
 				x3::rule<class axiom_declaration> const axiom_declaration("axiom declaration");
-				x3::rule<class function_declaration> const function_declaration("function declaration");
+
+/*				x3::rule<class function_declaration> const function_declaration("function declaration");
 				x3::rule<class procedure_declaration> const procedure_declaration("type declaration");
 				x3::rule<class implementation_declaration> const implementation_declaration("type declaration");
 
@@ -35,8 +49,7 @@ namespace front_end{
 				x3::rule<class proc_body> const proc_body("procedure body");
 				x3::rule<class proc_spec> const proc_spec("procedure specification");
 
-				x3::rule<class skip_to_semicolon> const skip_to_semicolon("WIP");
-
+*/
 				auto const program_def =
 					*declaration;
 
@@ -44,19 +57,32 @@ namespace front_end{
 					type_declaration
 				|	const_declaration
 				|	var_declaration
-				|  function_declaration
-				|  axiom_declaration
+			   |  axiom_declaration
+/*				|  function_declaration
 				|  procedure_declaration
-				|  implementation_declaration
+				|  implementation_declaration*/
 				;
 
 				auto const type_declaration_def =
 					"type" >> skip_to_semicolon;
+
+				auto const skip_to_semicolon_def =
+				*(char_ - (semicolon)) >> semicolon
+				;
+				auto const semicolon_def =
+					';'
+				;
+				auto const skip_parser_def =
+					space | line_comment;
+
+				auto const line_comment_def =
+					lexeme["//" >> *(char_ - eol) >> eol];
+
 				auto const const_declaration_def =
 					"constant" >> skip_to_semicolon;
 				auto const var_declaration_def =
 					"var" >> skip_to_semicolon;
-				auto const function_declaration_def =
+/*				auto const function_declaration_def =
 					"function" >> skip_to_semicolon;
 				auto const axiom_declaration_def =
 					"axiom" >> skip_to_semicolon;
@@ -66,19 +92,22 @@ namespace front_end{
 
 				auto const implementation_declaration_def =
 					"implementation" >> *attribute >> identifier >> imp_signature >> proc_body;
-
+*/
 				BOOST_SPIRIT_DEFINE(
-				  program = program_def
-				, declaration = declaration_def
-				, type_declaration = type_declaration_def
-				, var_declaration = var_declaration_def
-				, const_declaration = const_declaration_def
-				, function_declaration = function_declaration_def
-				, axiom_declaration = axiom_declaration_def
-				, procedure_declaration = procedure_declaration_def
-				, implementation_declaration = implementation_declaration_def
-				);
-
+				  program
+				, declaration
+				, type_declaration
+				, skip_to_semicolon
+				, semicolon
+				, skip_parser
+				, line_comment
+	/*			, var_declaration
+				, const_declaration
+				, function_declaration
+				, axiom_declaration
+				, procedure_declaration
+				, implementation_declaration*/
+				)
 
 		  }
 
@@ -88,11 +117,26 @@ namespace front_end{
 		 }
 
         void Parser::parse() {
-			  spirit::istream_iterator begin(input);
+			  spirit::istream_iterator iter(input);
 			  spirit::istream_iterator end;
 
-				x3::parse(begin,end,program);
-        }
+			  ;
+			  auto r = x3::phrase_parse(iter,end,grammar::program,grammar::skip_parser);
+			  cout << "-------------------------\n";
+			  if (r && iter == end)
+			  {
+				  cout << "Parsing succeeded\n";
+				  cout << "-------------------------\n";
+			  }
+			  else
+			  {
+				  string rest(iter, end);
+				  cout << "Parsing failed\n";
+				  cout << "stopped at: \n";
+				  cout << rest << "\n";
+				  cout << "-------------------------\n";
+			  }
+		  }
 
     }
 }
