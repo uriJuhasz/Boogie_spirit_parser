@@ -18,4 +18,6 @@ private:
 }
 
 
+void parseTest(std::istream& ins);
+
 #endif //FRONTEND_BOOGIE_PARSER_H

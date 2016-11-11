@@ -31,6 +31,7 @@ namespace front_end{
 		  using x3::lexeme;
 		  using x3::position_tagged;
 		  using boost::fusion::traits::tag_of;
+	     using std::string;
 
 		  namespace AST{
 			   class VariableDeclaration;
@@ -40,6 +41,7 @@ namespace front_end{
 			   class Axiom;
 			   class Identifier;
 			   class Attribute;
+			   class Attributes;
 
 				class ASTNode : public x3::position_tagged{};
 				class Program : public ASTNode
@@ -50,19 +52,22 @@ namespace front_end{
 					 std::list<FunctionDeclaration> functions;
 					 std::list<Axiom> axioms;
 				};
-			   class Identifier{
-				    string name;
+			   class Identifier : public ASTNode{
+			      public:string name;
 			   };
 				class NamedDeclaration : public ASTNode{
-					 Identifier name;
+					 Identifier id;
 				};
 			   class Attribute : public ASTNode{
-				    Identifier name;
+			   public:Identifier id;
 			   };
+//			   class Attributes : public ASTNode, public vector<Attribute>{};
 				class TypeDeclaration : public NamedDeclaration{};
 				class VariableDeclaration : public NamedDeclaration{};
 				class ConstantDeclaration : public NamedDeclaration{};
-				class FunctionDeclaration : public NamedDeclaration{};
+				class FunctionDeclaration : public NamedDeclaration{
+//					 Attribute attributes;
+				};
 				class Axiom : public ASTNode{};
 				using boost::fusion::operator<<;
 
@@ -87,7 +92,7 @@ namespace front_end{
 
 
 				x3::rule<class skip_to_semicolon> const skip_to_semicolon("WIP");
-		      x3::rule<class skip_balanced_curly> const skip_balanced_curly("WIP2");
+		      x3::rule<class skip_balanced_curly,x3::unused_type> const skip_balanced_curly("WIP2");
 		      x3::rule<class skip_non_curly> const skip_non_curly("WIP3");
 		      x3::rule<class skip_balanced_parenthesis> const skip_balanced_parenthesis("WIP2");
 		      x3::rule<class skip_non_parenthesis> const skip_non_parenthesis("WIP3");
@@ -102,20 +107,20 @@ namespace front_end{
 		      x3::rule<class function_declaration,Boogie::AST::FunctionDeclaration> const function_declaration("function declaration");
 
 				x3::rule<class identifier,Boogie::AST::Identifier> const identifier("identifier");
+		      x3::rule<class identifier1,std::string> const identifier1("identifier1");
 
 				x3::rule<class skip_parser> const skip_parser("skip");
 				x3::rule<class line_comment> const line_comment("line comment");
 
 		      x3::rule<class function_signature> const function_signature("function signature");
 		      x3::rule<class function_body> const function_body("function body");
-		      x3::rule<class attribute/*,Boogie::AST::Attribute*/> const attribute("attribute");
+
+		      x3::rule<class attribute, Boogie::AST::Attribute> const attribute("attribute");
+//		      x3::rule<class attributes,Boogie::AST::Attributes> const attributes("attributes");
+
 /*				x3::rule<class function_declaration> const function_declaration("function declaration");
 				x3::rule<class procedure_declaration> const procedure_declaration("type declaration");
 				x3::rule<class implementation_declaration> const implementation_declaration("type declaration");
-
-				x3::rule<class attribute> const attribute("attribute");
-				x3::rule<class identifier> const identifier("identifier");
-				x3::rule<class semicolon> const semicolon("semicolon");
 
 				x3::rule<class proc_signature> const proc_signature("procedure signature");
 				x3::rule<class imp_signature> const imp_signature("implementation signature");
@@ -131,6 +136,8 @@ namespace front_end{
 				   |	var_declaration
 					|  axiom
 				|  function_declaration
+//				| attribute
+//				|attributes
 /*				|  procedure_declaration
 				|  implementation_declaration*/
 				);
@@ -146,12 +153,16 @@ namespace front_end{
 				auto const axiom_def =
 					"axiom" >> skip_to_semicolon;
 		      auto const function_declaration_def =
-		         "function" >> identifier >> semicolon;
+		         "function" /*>> attribute*/ >> identifier >> semicolon;
 /*		         "function" >> *attribute >> identifier >> function_signature >> (
 		            semicolon | function_body
 		         );*/
 		      auto const attribute_def =
-			   '{' >> (':' >> identifier >> skip_balanced_curly >> '}');
+		         identifier;
+//			      lit('{') >> ':' >> identifier >> skip_balanced_curly >> '}';
+
+		      auto const attributes_def =
+		         *attribute;
 
 		      auto const function_signature_def =
 		         type_args
@@ -176,8 +187,12 @@ namespace front_end{
 		         *(char_ - (lit('('),')'))
 		      ;
 
-				auto const identifier_def =
-					raw[lexeme[(alpha | '_') >> *(alnum | '_')]];
+				auto const identifier1_def =
+					raw[lexeme[*char_]]; //(alpha | '_') >> *(alnum | '_')]];
+					//raw[lexeme[(alpha | '_') >> *(alnum | '_')]];
+
+		      auto const identifier_def =
+		         identifier1;
 
 		      auto const function_body_def =
 		         '{' >> skip_balanced_curly >> '}';
@@ -214,17 +229,13 @@ namespace front_end{
 				, const_declaration
 				, axiom
 				, function_declaration
-				/*			, procedure_declaration
-							, implementation_declaration*/
-
-
 				, identifier
 				, semicolon
-
+				, attribute
+//				,attributes
 				, function_body
 				, function_signature
 				, type_args
-
 				, skip_to_semicolon
 				, skip_balanced_curly
 				, skip_non_curly
@@ -232,7 +243,8 @@ namespace front_end{
 				, skip_non_parenthesis
 				, skip_parser
 				, line_comment
-
+				/*			, procedure_declaration
+							, implementation_declaration*/
 				)
 
 		  }
@@ -248,8 +260,17 @@ namespace front_end{
 			  spirit::istream_iterator iter(input);
 			  spirit::istream_iterator end;
 
-			  ;
-			  auto r = x3::phrase_parse(iter,end,grammar::program,grammar::skip_parser);
+			  AST::Program p;
+	        bool r=false;
+//			  r = x3::phrase_parse(iter,end,grammar::program,grammar::skip_parser,p);
+	        AST::Attribute attribute;
+//	        AST::Attributes attributes;
+//	        x3::phrase_parse(iter,end,grammar::attribute,grammar::skip_parser,attribute);
+	        AST::Identifier identifier;
+//	        AST::Identifier& idr = identifier;
+//	        x3::phrase_parse(iter,end,grammar::identifier,grammar::skip_parser,idr);
+	        std::vector<char> s;
+	        x3::parse(iter,end,grammar::identifier1,s);
 			  cout << "-------------------------\n";
 			  if (r && iter == end)
 			  {
@@ -288,21 +309,27 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
 	front_end::Boogie::AST::VariableDeclaration,
-	(front_end::Boogie::AST::Identifier, name)
+	(front_end::Boogie::AST::Identifier, id)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
-front_end::Boogie::AST::TypeDeclaration,
-(front_end::Boogie::AST::Identifier, name)
+	front_end::Boogie::AST::TypeDeclaration,
+	(front_end::Boogie::AST::Identifier, id)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
-front_end::Boogie::AST::ConstantDeclaration,
-(front_end::Boogie::AST::Identifier, name)
+	front_end::Boogie::AST::ConstantDeclaration,
+	(front_end::Boogie::AST::Identifier, id)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
-front_end::Boogie::AST::FunctionDeclaration,
-(front_end::Boogie::AST::Identifier, name)
+	front_end::Boogie::AST::Attribute,
+	(front_end::Boogie::AST::Identifier, id)
+)
+
+
+BOOST_FUSION_ADAPT_STRUCT(
+	front_end::Boogie::AST::FunctionDeclaration,
+	(front_end::Boogie::AST::Identifier, id)
 )
 

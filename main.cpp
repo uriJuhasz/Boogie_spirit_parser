@@ -11,11 +11,13 @@ int main() {
     cout << "Start" << endl;
 
     ifstream boogieFile(boogieFileName);
-
+/*
     front_end::Boogie::Parser parser(boogieFile);
 
     parser.parse();
-
+*/
+    parseTest(boogieFile);
     cout << "End" << endl;
     return 0;
 }
+
